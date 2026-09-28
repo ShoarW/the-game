@@ -40,7 +40,7 @@ func test_first_person_hides_avatar_and_third_person_reveals_it() -> void:
 	assert_false((_player.get_node("Body/Mesh") as Node3D).visible)
 
 
-func test_late_player_gets_same_palette_rule_and_its_own_rig() -> void:
+func test_late_player_starts_in_underwear_with_its_own_rig() -> void:
 	var remote := PLAYER_SCENE.instantiate() as Player
 	remote.name = "7"
 	remote.set_multiplayer_authority(7)

@@ -1,6 +1,6 @@
 class_name HeldArms
 extends Node3D
-## Cosmetic glove and sleeve rig owned by Holdables. Grip markers place the hands;
+## Cosmetic hand and arm rig owned by Holdables. Grip markers place the hands;
 ## shoulders follow the player body, so third-person items remain attached.
 
 var _right := Node3D.new()
@@ -11,7 +11,7 @@ var _sleeve := StandardMaterial3D.new()
 
 
 func _ready() -> void:
-	_glove.albedo_color = Color(0.20, 0.23, 0.25)
+	_glove.albedo_color = ClothingCatalog.SKIN
 	_glove.roughness = 0.95
 	_sleeve.albedo_color = Color(0.17, 0.32, 0.40)
 	_sleeve.roughness = 0.9

@@ -18,10 +18,6 @@ func _process(_delta: float) -> void:
 		var model := BlockPlayerModel.new()
 		model.name = "Avatar"
 		model.player = player
-		var index := posmod(
-			player.get_multiplayer_authority(), BlockPlayerModel.SHIRT_COLORS.size()
-		)
-		model.shirt_color = BlockPlayerModel.SHIRT_COLORS[index]
 		body.add_child(model)
 		(body.get_node("Mesh") as Node3D).hide()
 		(body.get_node("Visor") as Node3D).hide()

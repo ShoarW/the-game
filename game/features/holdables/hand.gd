@@ -111,6 +111,8 @@ func request_drop_item() -> void:
 func try_equip(item_id: String) -> bool:
 	if not multiplayer.is_server() or not net_item_id.is_empty():
 		return false
+	if ItemCatalog.find(item_id) == null or not ClothingCatalog.slot(item_id).is_empty():
+		return false
 	net_item_id = item_id
 	return true
 
@@ -318,3 +320,25 @@ func _set_flash(active: bool) -> void:
 		muzzle.add_child(light)
 	elif not active and existing != null:
 		existing.queue_free()
+
+
+func inventory() -> PlayerInventory:
+	return $Inventory as PlayerInventory
+
+
+## Spawn first; the inventory removes the source item only after this succeeds.
+func drop_inventory_item(item_id: String) -> bool:
+	if not multiplayer.is_server() or ItemCatalog.find(item_id) == null:
+		return false
+	var player := _player()
+	var holdables := get_tree().get_first_node_in_group(&"holdables_root")
+	if player == null or holdables == null:
+		return false
+	var from := (
+		HeldItemPose.world_grip(player.net_position, player.net_yaw, player.net_pitch).origin
+	)
+	var direction := ThrowMath.aim_direction(player.net_yaw, player.net_pitch)
+	holdables.call(
+		"spawn_thrown_item", item_id, from, _landing_point(from, direction, DROP_DISTANCE)
+	)
+	return true

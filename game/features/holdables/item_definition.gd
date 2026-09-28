@@ -9,6 +9,7 @@ enum Category {
 	WEAPON,  ## Fires; stays in hand.
 	FOOD,  ## Eaten once; removed from hand.
 	PROP,  ## Thrown; removed from hand and becomes a world pickup where it lands.
+	CLOTHING,  ## Equipped in a shirt or pants slot.
 }
 
 @export var id := ""
