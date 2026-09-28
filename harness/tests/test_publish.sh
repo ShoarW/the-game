@@ -95,11 +95,20 @@ publish
 [[ "$(cat "$work/pr-title" 2>/dev/null)" == "feat(game): add jump pads" ]] || fail "PR title"
 body="$(cat "$work/pr-body" 2>/dev/null)"
 for want in "## Summary" "Boing." "Closes #5" "## Discord Request" "> **Jump pads**" "> pads" \
-  "requested by @alice" "game/core/net/n.gd" "verify passed after 1 attempt"; do
+  "requested by @alice" "game/core/net/n.gd" "verify passed after 1 attempt" \
+  "Verified with base commit" "$(jq -r .base_sha "$out/result.json")"; do
   [[ "$body" == *"$want"* ]] || fail "PR body lacks '$want'"
 done
 grep -q "pull/99" "$work/comments" || fail "no PR link comment on the issue"
 grep -q unlabeled "$work/labels" || fail "label not removed"
+
+echo "- a moving base is disclosed instead of claiming validation against latest main"
+scenario <<<'echo pad >game/pad.txt'
+(cd "$work/seed$n" && echo newer >game/newer.txt && git add -A && git commit -qm 'feat: newer base' && git push -q origin main)
+git -C "$pub" fetch -q origin
+publish
+[[ "$code" == 0 ]] || fail "moved base publish: $(cat "$work/publish.log")"
+grep -q 'base has moved' "$work/pr-body" || fail 'missing moving-base notice'
 
 echo "- a bot-opened issue credits the Discord requester from its trailer"
 scenario <<<'echo pad >game/pad.txt'

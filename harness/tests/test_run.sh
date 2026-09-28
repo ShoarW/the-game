@@ -146,6 +146,56 @@ expect_eq "$(field status)" success status
 expect_eq "$(field attempts)" 0 attempts
 expect_eq "$(git -C "$repo" rev-list --parents -1 HEAD | wc -w | tr -d ' ')" 3 "merge commit"
 
+case_ "revise: includes newer base changes even when local main is stale"
+new_repo
+(cd "$repo" && git switch -qc agent/11-x && echo a >game/a.txt && git add -A && git commit -qm "feat: a" &&
+  git push -q origin agent/11-x && git switch -q main && echo m >game/m.txt && git add -A &&
+  git commit -qm "feat: m" && git push -q origin main && git reset -q --hard HEAD~1)
+base_sha="$(git -C "$repo" rev-parse origin/main)"
+verify '[[ -f game/a.txt && -f game/m.txt && -f game/revised.txt && -f "$(git rev-parse --git-path MERGE_HEAD)" ]]'
+agent <<'EOF'
+[[ -f game/m.txt ]] || exit 8
+grep -q "$(git rev-parse origin/main)" "$1" || exit 9
+grep -q 'do not commit or abort' "$1" || exit 10
+echo revised >game/revised.txt
+printf 'fix: revise feature\n' >"$HARNESS_OUT/summary.md"
+EOF
+run --mode revise --branch agent/11-x
+expect_eq "$code" 0 "revision exit"
+expect_eq "$(field base_sha)" "$base_sha" "recorded base snapshot"
+git -C "$repo" merge-base --is-ancestor "$base_sha" HEAD || fail 'revision omitted base'
+expect_eq "$(git -C "$repo" rev-list --parents -1 HEAD | wc -w | tr -d ' ')" 3 "verified merge commit"
+
+case_ "revise: conflicts retain feedback and preserve both behaviors"
+new_repo
+(cd "$repo" && git switch -qc agent/12-x && echo branch >game/greeting.txt && git commit -qam "feat: b" &&
+  git push -q origin agent/12-x && git switch -q main && echo main >game/greeting.txt &&
+  git commit -qam "feat: m" && git push -q origin main)
+printf 'Keep both greetings and add feedback\n' >"$work/task.md"
+verify 'grep -q branch game/greeting.txt && grep -q main game/greeting.txt && grep -q feedback game/greeting.txt'
+agent <<'EOF'
+grep -q 'Keep both greetings and add feedback' "$1" || exit 9
+printf 'branch\nmain\nfeedback\n' >game/greeting.txt
+git add game/greeting.txt
+printf 'fix: reconcile greetings\n' >"$HARNESS_OUT/summary.md"
+EOF
+run --mode revise --branch agent/12-x
+expect_eq "$code" 0 "conflicting revision exit"
+expect_eq "$(git -C "$repo" show HEAD:game/greeting.txt | tr '\n' ,)" "branch,main,feedback," resolution
+
+case_ "revise: failed combined verification leaves the merge uncommitted"
+new_repo
+(cd "$repo" && git switch -qc agent/13-x && echo a >game/a.txt && git add -A && git commit -qm "feat: a" &&
+  git push -q origin agent/13-x && git switch -q main && echo m >game/m.txt && git add -A &&
+  git commit -qm "feat: m" && git push -q origin main)
+original="$(git -C "$repo" rev-parse agent/13-x)"
+verify 'exit 1'
+agent <<<'printf "no changes\n" >"$HARNESS_OUT/summary.md"'
+run --mode revise --branch agent/13-x --attempts 1
+expect_eq "$code" 2 "failed merge verification"
+expect_eq "$(git -C "$repo" rev-parse HEAD)" "$original" "failed merge must not commit"
+[[ ! -e "$out/changes.bundle" ]] || fail 'failed merge bundled'
+
 case_ "resolve-conflicts: the agent resolves, the harness concludes the merge"
 new_repo
 (cd "$repo" && git switch -qc agent/9-x && echo branch >game/greeting.txt && git commit -qam "feat: b" &&
