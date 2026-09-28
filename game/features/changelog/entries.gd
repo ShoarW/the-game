@@ -17,6 +17,11 @@ const ENTRIES: Array[Dictionary] = [
 		)
 	},
 	{
+		"title": "Noclip for everyone",
+		"summary":
+		"Press V to toggle noclip. Switching control schemes no longer needs play time first."
+	},
+	{
 		"title": "Kaaba",
 		"summary": "A scaled-down Kaaba now stands in the northwest corner of the map."
 	},
