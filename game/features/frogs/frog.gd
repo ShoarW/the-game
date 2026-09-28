@@ -18,6 +18,7 @@ var jump_height := 0.5
 var jump_duration := 0.45
 var rest_time := 1.0
 
+var _remote_initialized := false
 var _hopping := false
 var _settling := true
 var _hop_from := Vector3.ZERO
@@ -37,15 +38,16 @@ var _navigation := FrogNavigation.new()
 
 
 func _ready() -> void:
-	net_position = position
 	_navigation.configure(body_size, get_rid())
 	_collider.shape = _navigation.body_shape
 	_collider.position.y = _navigation.radius + 0.04
 	_body.build(body_color, body_size)
 	if multiplayer.is_server():
+		net_position = position
 		_rest_timer = randf_range(0.3, rest_time)
 		_heading = Vector3.FORWARD.rotated(Vector3.UP, randf() * TAU)
 	else:
+		physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 		set_physics_process(false)
 
 
@@ -85,7 +87,7 @@ func _physics_process(delta: float) -> void:
 func _process(delta: float) -> void:
 	var smoothing := 1.0 - exp(-REMOTE_SMOOTHING * delta)
 	if not multiplayer.is_server():
-		position = position.lerp(net_position, smoothing)
+		_render_remote(smoothing)
 	_body.rotation.y = lerp_angle(_body.rotation.y, net_yaw, smoothing)
 	_body.animate(net_phase, delta)
 
@@ -140,3 +142,15 @@ func _finish_hop() -> void:
 	_hopping = false
 	net_phase = -1.0
 	_rest_timer = randf_range(0.08, 0.18) if _fleeing else rest_time * randf_range(0.7, 1.3)
+
+
+func _render_remote(smoothing: float) -> void:
+	if not _remote_initialized:
+		# Spawn data remembers the original pond position. The synchronizer applies
+		# the current snapshot after _ready, before the first process frame.
+		position = net_position
+		_body.rotation.y = net_yaw
+		_remote_initialized = true
+		reset_physics_interpolation()
+	else:
+		position = position.lerp(net_position, smoothing)

@@ -158,3 +158,33 @@ func _box(at: Vector3, dimensions: Vector3) -> void:
 	body.add_child(collider)
 	body.position = at
 	_world.add_child(body)
+
+
+func test_moving_platform_is_not_a_supported_landing() -> void:
+	var platform := AnimatableBody3D.new()
+	var collider := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(3, 0.4, 3)
+	collider.shape = shape
+	platform.add_child(collider)
+	platform.position = Vector3(0, 0.2, -2)
+	_world.add_child(platform)
+	await wait_physics_frames(2)
+	assert_true(
+		_navigation.supported_ground(_space(), Vector3(0, 0, -2)).is_empty(),
+		"AnimatableBody3D inherits StaticBody3D, but its surface can move before a frog lands"
+	)
+
+
+func test_first_remote_snapshot_snaps_instead_of_sliding_from_original_spawn() -> void:
+	var frog := FROG_SCENE.instantiate() as Frog
+	_world.add_child(frog)
+	frog.set_physics_process(false)
+	frog.net_position = Vector3(15, 2, 20)
+	frog.net_yaw = 1.2
+	frog._render_remote(0.25)
+	assert_eq(frog.position, frog.net_position)
+	assert_almost_eq(frog.get_node("Body").rotation.y, frog.net_yaw, 0.001)
+	frog.net_position.x = 19.0
+	frog._render_remote(0.25)
+	assert_almost_eq(frog.position.x, 16.0, 0.001, "Later updates still interpolate")

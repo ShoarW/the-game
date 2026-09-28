@@ -4,6 +4,14 @@ extends Node
 
 func _ready() -> void:
 	$Game/Features/character_memory.queue_free()
+	# Force a large gap between original spawn data and the current snapshot.
+	if multiplayer.is_server():
+		for frog: Node3D in $Game/Features/frogs/Pond.get_children():
+			frog.set_physics_process(false)
+			frog.position = Vector3(15, 2, 20)
+			frog.net_position = frog.position
+	else:
+		get_tree().node_added.connect(_on_node_added)
 	match Network.args.get("inventory-role", ""):
 		"driver":
 			_drive()
@@ -105,3 +113,15 @@ func _check(condition: bool, message: String) -> void:
 	if not condition:
 		push_error(message)
 		get_tree().quit(1)
+
+
+func _on_node_added(node: Node) -> void:
+	if node is Frog and not multiplayer.is_server():
+		(node as Frog).ready.connect(_check_frog_spawn.bind(node), CONNECT_DEFERRED)
+
+
+func _check_frog_spawn(frog: Frog) -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if is_instance_valid(frog):
+		_check(frog.position.distance_to(Vector3(15, 2, 20)) < 0.001, "Late frog slid from spawn")

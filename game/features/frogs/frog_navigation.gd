@@ -89,6 +89,6 @@ func _ground_ray(space: PhysicsDirectSpaceState3D, point: Vector3) -> Dictionary
 	var hit := space.intersect_ray(query)
 	# Players and other moving bodies are obstacles, never stepping stones.
 	if not hit.is_empty() and hit["collider"] is PhysicsBody3D:
-		if not hit["collider"] is StaticBody3D:
+		if hit["collider"] is AnimatableBody3D or not hit["collider"] is StaticBody3D:
 			return {}
 	return hit
