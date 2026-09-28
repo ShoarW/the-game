@@ -11,7 +11,7 @@ var _sleeve := StandardMaterial3D.new()
 
 
 func _ready() -> void:
-	_glove.albedo_color = ClothingCatalog.SKIN
+	_glove.albedo_color = PlayerSkin.TONES[0]
 	_glove.roughness = 0.95
 	_sleeve.albedo_color = Color(0.17, 0.32, 0.40)
 	_sleeve.roughness = 0.9
@@ -78,3 +78,7 @@ func _box(parent: Node3D, at: Vector3, dimensions: Vector3) -> void:
 	mesh.material_override = _glove
 	mesh.position = at
 	parent.add_child(mesh)
+
+
+func set_skin_color(color: Color) -> void:
+	_glove.albedo_color = color

@@ -125,6 +125,7 @@ func _refresh() -> void:
 	_equip.disabled = _selected < 0 or item.is_empty()
 	_stow.disabled = _selected >= 0 or item.is_empty() or not _inventory.backpack.has("")
 	_drop.disabled = item.is_empty()
+	_preview.model.set_skin_index(_inventory.hand().skin_tone_index())
 	_preview.show_clothing(_inventory.shirt, _inventory.pants)
 
 

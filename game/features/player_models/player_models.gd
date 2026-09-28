@@ -18,6 +18,7 @@ func _process(_delta: float) -> void:
 		var model := BlockPlayerModel.new()
 		model.name = "Avatar"
 		model.player = player
+		model.set_skin_index(PlayerSkin.index_for_id(player.get_multiplayer_authority()))
 		body.add_child(model)
 		(body.get_node("Mesh") as Node3D).hide()
 		(body.get_node("Visor") as Node3D).hide()

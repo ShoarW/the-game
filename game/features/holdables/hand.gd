@@ -20,6 +20,8 @@ const FLASH_DURATION_S := 0.06
 ## Set from spawn data (see holdables.gd), identically on every peer, before this node
 ## enters the tree, so it doesn't need its own synchronizer property.
 var peer_id := 0
+## Derived by the server from the account ID (or peer ID in offline/dev play).
+var skin_index := -1
 
 var _mounted_item_id := ""
 var _view: Node3D
@@ -256,10 +258,13 @@ func support_grip() -> Node3D:
 func _pose_arms(player: Player) -> void:
 	if _view == null:
 		return
+	_arms.set_skin_color(PlayerSkin.TONES[skin_tone_index()])
 	var body := player.get_node("Body") as Node3D
 	var avatar := body.get_node_or_null("Avatar")
 	if avatar != null and avatar.has_method("sleeve_color"):
 		_arms.set_sleeve_color(avatar.call("sleeve_color"))
+	else:
+		_arms.set_sleeve_color(PlayerSkin.TONES[skin_tone_index()])
 	var first_person := player.is_local() and not body.visible
 	if not first_person and avatar != null and avatar.has_method("shoulder_position"):
 		_arms.pose(
@@ -342,3 +347,11 @@ func drop_inventory_item(item_id: String) -> bool:
 		"spawn_thrown_item", item_id, from, _landing_point(from, direction, DROP_DISTANCE)
 	)
 	return true
+
+
+func skin_tone_index() -> int:
+	return (
+		skin_index
+		if skin_index >= 0 and skin_index < PlayerSkin.TONES.size()
+		else PlayerSkin.index_for_id(peer_id)
+	)

@@ -4,11 +4,13 @@ extends Node3D
 ## feature controls first/third-person visibility and player replication owns yaw.
 
 var player: Player
-var shirt_color := ClothingCatalog.SKIN
-var pants_color := ClothingCatalog.SKIN
+var skin_color := PlayerSkin.TONES[0]
+var shirt_color := skin_color
+var pants_color := skin_color
 var shirt_id := ""
 var pants_id := ""
 var locomotion: StringName = &"idle"
+var _skin_material: StandardMaterial3D
 var _shirt_material: StandardMaterial3D
 var _trim_material: StandardMaterial3D
 var _pants_material: StandardMaterial3D
@@ -41,6 +43,7 @@ func _process(delta: float) -> void:
 	var grounded := player.is_on_floor() if player.is_local() else _remote_grounded()
 	var hand := Hand.for_peer(get_tree(), player.get_multiplayer_authority())
 	if hand != null:
+		set_skin_index(hand.skin_tone_index())
 		set_clothing(hand.inventory().shirt, hand.inventory().pants)
 	var holding := hand != null and ItemCatalog.find(hand.net_item_id) != null
 	var support := holding and hand.support_grip() != null
@@ -100,7 +103,8 @@ func _remote_grounded() -> bool:
 
 
 func _build() -> void:
-	var skin := _material(Color(0.69, 0.45, 0.29))
+	_skin_material = _material(skin_color)
+	var skin := _skin_material
 	_shirt_material = _material(shirt_color)
 	_trim_material = _material(shirt_color.lightened(0.22))
 	_pants_material = _material(pants_color)
@@ -180,8 +184,8 @@ func set_clothing(new_shirt: String, new_pants: String) -> void:
 
 
 func _apply_clothing() -> void:
-	shirt_color = ClothingCatalog.SKIN if shirt_id.is_empty() else ClothingCatalog.color(shirt_id)
-	pants_color = ClothingCatalog.SKIN if pants_id.is_empty() else ClothingCatalog.color(pants_id)
+	shirt_color = skin_color if shirt_id.is_empty() else ClothingCatalog.color(shirt_id)
+	pants_color = skin_color if pants_id.is_empty() else ClothingCatalog.color(pants_id)
 	_shirt_material.albedo_color = shirt_color
 	_trim_material.albedo_color = shirt_color.lightened(0.22)
 	_pants_material.albedo_color = pants_color
@@ -191,3 +195,13 @@ func _apply_clothing() -> void:
 		(arm.get_node("Cuff") as Node3D).visible = not shirt_id.is_empty()
 	for leg: Node3D in [_left_leg, _right_leg]:
 		(leg.get_node("Underwear") as Node3D).visible = pants_id.is_empty()
+
+
+func set_skin_index(index: int) -> void:
+	var next := PlayerSkin.TONES[clampi(index, 0, PlayerSkin.TONES.size() - 1)]
+	if next == skin_color:
+		return
+	skin_color = next
+	if _skin_material != null:
+		_skin_material.albedo_color = skin_color
+		_apply_clothing()

@@ -7,6 +7,15 @@ shirts and pants with fixed colors, replicated for everyone to see. Player colli
 are unchanged. The existing F3 camera displays your own model in third person;
 your body remains hidden in first person.
 
+## Skin tones
+
+A player's ID selects one of eight skin tones. The server uses the authenticated
+account ID, so a reconnect with a new network peer ID keeps the same tone. Offline
+and dev-auth players use their peer ID. Hand spawn data carries only the resulting
+palette index; account IDs remain on the server. Avatars, bare arms and legs,
+gripping hands, and the inventory preview all use the same skin color. Clothing
+and white underwear keep their own colors.
+
 ## Animation
 
 `block_player_motion.gd` derives poses from velocity:

@@ -9,6 +9,10 @@ class_name ChangelogEntries
 ## description of what it does.
 const ENTRIES: Array[Dictionary] = [
 	{
+		"title": "Player skin tones",
+		"summary": "Your player ID now determines a consistent skin tone for your avatar and hands."
+	},
+	{
 		"title": "Backpacks and clothing",
 		"summary":
 		"Start in white underwear. Find clothing, manage your backpack and view your wallet with I."

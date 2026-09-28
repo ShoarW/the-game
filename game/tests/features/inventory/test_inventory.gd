@@ -152,7 +152,7 @@ func test_avatar_uses_underwear_until_equipped_and_materials_are_per_player() ->
 	var other := BlockPlayerModel.new()
 	add_child_autofree(model)
 	add_child_autofree(other)
-	assert_eq(model.sleeve_color(), ClothingCatalog.SKIN)
+	assert_eq(model.sleeve_color(), PlayerSkin.TONES[0])
 	assert_true(model.get_node("Rig/LeftLeg/Underwear").visible)
 	assert_false(model.get_node("Rig/Torso/Pocket").visible)
 	model.set_clothing("shirt:4", "pants:1")
@@ -160,10 +160,10 @@ func test_avatar_uses_underwear_until_equipped_and_materials_are_per_player() ->
 	assert_eq(model.pants_color, ClothingCatalog.COLORS[1])
 	assert_false(model.get_node("Rig/LeftLeg/Underwear").visible)
 	assert_true(model.get_node("Rig/Torso/Pocket").visible)
-	assert_eq(other.sleeve_color(), ClothingCatalog.SKIN)
+	assert_eq(other.sleeve_color(), PlayerSkin.TONES[0])
 	model.set_clothing("", "")
 	assert_true(model.get_node("Rig/RightLeg/Underwear").visible)
-	assert_eq(model.pants_color, ClothingCatalog.SKIN)
+	assert_eq(model.pants_color, PlayerSkin.TONES[0])
 
 
 func test_inventory_screen_reads_wallet_without_using_a_slot_and_blocks_gameplay() -> void:
@@ -173,10 +173,12 @@ func test_inventory_screen_reads_wallet_without_using_a_slot_and_blocks_gameplay
 	wallet.balances = {1: 4250}
 	var screen: CanvasLayer = load("res://features/inventory/inventory_screen.gd").new()
 	add_child_autofree(screen)
+	_hand.skin_index = 6
 	screen.esc_menu_open()
 	assert_true(screen.is_in_group(&"modal_ui"))
 	assert_false(Controls.gameplay_active())
 	assert_eq(screen._wallet.text, "$42.50")
+	assert_eq(screen._preview.model.skin_color, PlayerSkin.TONES[6])
 	assert_eq(_inventory.backpack.count(""), 8)
 	wallet.balances = {1: 5250}
 	screen._process(0.0)

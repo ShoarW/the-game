@@ -30,7 +30,6 @@ const COLOR_NAMES: Array[String] = [
 	"Silver",
 	"Red",
 ]
-const SKIN := Color(0.69, 0.45, 0.29)
 
 
 static func slot(id: String) -> String:

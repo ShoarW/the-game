@@ -49,7 +49,8 @@ func test_late_player_starts_in_underwear_with_its_own_rig() -> void:
 	var other := remote.get_node("Body/Avatar") as BlockPlayerModel
 	assert_not_null(other)
 	assert_ne(other, _model)
-	assert_eq(other.shirt_color, _model.shirt_color)
+	assert_eq(other.skin_color, PlayerSkin.TONES[PlayerSkin.index_for_id(7)])
+	assert_eq(_model.skin_color, PlayerSkin.TONES[PlayerSkin.index_for_id(1)])
 	assert_true(other.is_visible_in_tree())
 
 
@@ -79,6 +80,7 @@ func test_held_arms_replace_only_occupied_limbs_and_follow_shoulders() -> void:
 	assert_false(_model.get_node("Rig/Torso/RightArm").visible)
 	assert_true(_model.get_node("Rig/Torso/LeftArm").visible)
 	assert_eq(hand._arms._sleeve.albedo_color, _model.shirt_color)
+	assert_eq(hand._arms._glove.albedo_color, _model.skin_color)
 	var sleeve := hand._arms._segments[0]
 	var shoulder := sleeve.to_global(Vector3(0, -0.5, 0))
 	assert_true(shoulder.is_equal_approx(_model.shoulder_position(true)))
@@ -112,3 +114,41 @@ func test_remote_ground_probe_keeps_jump_pose_through_apex() -> void:
 	_player.net_position.y += 2.0
 	_player.net_velocity.y = 0.0
 	assert_false(_model._remote_grounded(), "Zero vertical speed at the apex is not grounded")
+
+
+func test_account_id_keeps_skin_across_peer_changes_and_spawn_data_carries_only_tone() -> void:
+	var manager: Node = load("res://features/holdables/holdables.gd").new()
+	var original := Network.peer_accounts.duplicate(true)
+	Network.peer_accounts[501] = {"account_id": 42}
+	Network.peer_accounts[902] = {"account_id": 42}
+	Network.peer_accounts[903] = {"account_id": 43}
+	var first: Dictionary = manager._hand_data(501)
+	var reconnected: Dictionary = manager._hand_data(902)
+	var different: Dictionary = manager._hand_data(903)
+	assert_eq(first["skin_index"], reconnected["skin_index"])
+	assert_ne(first["skin_index"], different["skin_index"])
+	assert_eq(first.size(), 2)
+	assert_false(first.has("account_id"))
+	var spawned := manager._spawn_hand(reconnected) as Hand
+	add_child_autofree(spawned)
+	assert_eq(spawned.peer_id, 902)
+	assert_eq(spawned.skin_tone_index(), PlayerSkin.index_for_id(42))
+	assert_eq(manager._hand_data(1)["skin_index"], PlayerSkin.index_for_id(1))
+	Network.peer_accounts = original
+	manager.free()
+
+
+func test_skin_changes_update_exposed_body_without_changing_clothes_or_underwear() -> void:
+	_model.set_clothing("shirt:4", "pants:3")
+	_model.set_skin_index(7)
+	assert_eq(_model.skin_color, PlayerSkin.TONES[7])
+	assert_eq(_model.shirt_color, ClothingCatalog.COLORS[4])
+	assert_eq(_model.pants_color, ClothingCatalog.COLORS[3])
+	var face := _model.get_node("Rig/Torso/Head/Face") as MeshInstance3D
+	assert_eq((face.material_override as StandardMaterial3D).albedo_color, PlayerSkin.TONES[7])
+	_model.set_clothing("", "")
+	assert_eq(_model.sleeve_color(), PlayerSkin.TONES[7])
+	assert_eq(_model.pants_color, PlayerSkin.TONES[7])
+	var underwear := _model.get_node("Rig/LeftLeg/Underwear") as MeshInstance3D
+	assert_true(underwear.visible)
+	assert_eq((underwear.material_override as StandardMaterial3D).albedo_color, Color("f8f8f1"))

@@ -74,6 +74,8 @@ func _observe() -> void:
 		await get_tree().process_frame
 	await get_tree().create_timer(0.1).timeout
 	var model := remote.get_node("Body/Avatar") as BlockPlayerModel
+	_check(model.skin_color == PlayerSkin.TONES[hand.skin_tone_index()], "Late skin tone mismatch")
+	_check(hand._arms._glove.albedo_color == model.skin_color, "Held hands have wrong skin")
 	_check(
 		model.shirt_id == "shirt:2" and model.pants_id == "pants:3", "Late avatar clothing missing"
 	)
