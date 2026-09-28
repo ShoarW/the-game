@@ -2,12 +2,13 @@
 
 importer="oggvorbisstr"
 type="AudioStreamOggVorbis"
-uid="uid://bblmy2cld5m6p"
-valid=false
+uid="uid://cjede2g361qq4"
+path="res://.godot/imported/win.ogg-3144d6d8f455b04306ad87a4e35e1276.oggvorbisstr"
 
 [deps]
 
 source_file="res://features/slot_machine/audio/win.ogg"
+dest_files=["res://.godot/imported/win.ogg-3144d6d8f455b04306ad87a4e35e1276.oggvorbisstr"]
 
 [params]
 

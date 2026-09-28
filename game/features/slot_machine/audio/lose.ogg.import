@@ -2,12 +2,13 @@
 
 importer="oggvorbisstr"
 type="AudioStreamOggVorbis"
-uid="uid://cadmf5cary8na"
-valid=false
+uid="uid://dd2xjxde8hdi"
+path="res://.godot/imported/lose.ogg-361ab1a93cc6753efbcf332caa6d82ee.oggvorbisstr"
 
 [deps]
 
 source_file="res://features/slot_machine/audio/lose.ogg"
+dest_files=["res://.godot/imported/lose.ogg-361ab1a93cc6753efbcf332caa6d82ee.oggvorbisstr"]
 
 [params]
 
