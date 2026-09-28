@@ -11,6 +11,8 @@ const RESPAWN_DELAY_S := 4.0
 @export var net_position := Vector3.ZERO
 @export var net_yaw := 0.0
 @export var net_phase := -1.0
+## Keep alive and position in the same continuous snapshot: an on-change alive
+## event can otherwise arrive before the position update during respawn.
 @export var net_alive := true
 
 var body_color := Color(0.3, 0.8, 0.35)

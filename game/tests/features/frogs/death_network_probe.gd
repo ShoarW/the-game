@@ -17,6 +17,8 @@ func _frog() -> Frog:
 func _server() -> void:
 	var frog := _frog()
 	frog.set_physics_process(false)
+	# Stress the gap between snapshots; alive and position must arrive together.
+	frog.get_node("Sync").replication_interval = 0.25
 	frog.position += Vector3(10, 2, 10)
 	frog.net_position = frog.position
 	while get_tree().get_nodes_in_group(&"players").is_empty():
@@ -55,7 +57,7 @@ func _client() -> void:
 	await get_tree().process_frame
 	_check(frog.get_node("Body").visible, "Respawn body missing")
 	_check(not frog.get_node("Collider").disabled, "Respawn collider missing")
-	_check(frog.position.distance_to(frog.net_position) < 0.001, "Respawn must snap to home")
+	_check(frog.position.distance_to(frog._home) < 0.001, "Respawn must snap to home")
 	_check(_effects(frog) == 0, "Explosion debris leaked past respawn")
 	print("FROG_CLIENT_RESPAWNED")
 
