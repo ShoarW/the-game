@@ -247,12 +247,27 @@ func _aim_origin(player: Player) -> Vector3:
 	)
 
 
+func support_grip() -> Node3D:
+	return _view.get_node_or_null("SupportGrip") as Node3D if _view != null else null
+
+
 func _pose_arms(player: Player) -> void:
 	if _view == null:
 		return
 	var body := player.get_node("Body") as Node3D
+	var avatar := body.get_node_or_null("Avatar")
+	if avatar != null and avatar.has_method("sleeve_color"):
+		_arms.set_sleeve_color(avatar.call("sleeve_color"))
+	var first_person := player.is_local() and not body.visible
+	if not first_person and avatar != null and avatar.has_method("shoulder_position"):
+		_arms.pose(
+			_arms.to_local(avatar.call("shoulder_position", true)),
+			_arms.to_local(avatar.call("shoulder_position", false)),
+			support_grip()
+		)
+		return
 	var shoulders: Transform3D
-	if player.is_local() and not body.visible:
+	if first_person:
 		shoulders = (player.get_node("Camera") as Node3D).global_transform
 		shoulders.origin += shoulders.basis * Vector3(0, -0.36, 0.10)
 	else:
@@ -262,7 +277,7 @@ func _pose_arms(player: Player) -> void:
 	_arms.pose(
 		_arms.to_local(shoulders * Vector3(0.32, 0, 0)),
 		_arms.to_local(shoulders * Vector3(-0.32, 0, 0)),
-		_view.get_node_or_null("SupportGrip") as Node3D
+		support_grip()
 	)
 
 

@@ -23,15 +23,16 @@ func _ready() -> void:
 	_build_glove(_left, -1.0)
 	for index: int in 4:
 		var segment := MeshInstance3D.new()
-		var mesh := CylinderMesh.new()
-		mesh.top_radius = 0.045
-		mesh.bottom_radius = 0.065
-		mesh.height = 1.0
-		mesh.radial_segments = 8
+		var mesh := BoxMesh.new()
+		mesh.size = Vector3(0.17, 1.0, 0.17)
 		segment.mesh = mesh
 		segment.material_override = _sleeve
 		add_child(segment)
 		_segments.append(segment)
+
+
+func set_sleeve_color(color: Color) -> void:
+	_sleeve.albedo_color = color
 
 
 func pose(right_shoulder: Vector3, left_shoulder: Vector3, support: Node3D) -> void:
