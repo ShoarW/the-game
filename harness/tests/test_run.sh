@@ -38,7 +38,10 @@ new_repo() {
   printf 'Add a thing\n' >"$work/task.md"
 }
 
-agent() { cat >"$work/agent-script"; }
+agent() {
+  cat >"$work/agent-script"
+  echo 'source harness/tests/fixtures/complete-summary.sh' >>"$work/agent-script"
+}
 verify() { printf '#!/usr/bin/env bash\ncd "$(git rev-parse --show-toplevel)"\n%s\n' "$1" >"$work/verify" && chmod +x "$work/verify"; }
 run() {
   code=0
@@ -100,6 +103,31 @@ run --mode implement --branch agent/3-x --attempts 2
 expect_eq "$code" 2 "exit code"
 expect_eq "$(field status)" failed status
 [[ -e "$out/changes.bundle" ]] && fail "failed run left a bundle"
+
+case_ "implement: passing code without integration notes is returned for revision"
+new_repo
+verify 'exit 0'
+agent <<'EOF'
+echo new >game/new.txt
+printf 'feat: add new behavior\n\n## Summary\nNew behavior.\n' >"$HARNESS_OUT/summary.md"
+if [[ "$3" == 0 ]]; then exit 0; fi # deliberately skip the reporting fixture once
+grep -q 'Integration review missing' "$1" || exit 9
+EOF
+run --mode implement --branch agent/14-x
+expect_eq "$code" 0 "missing review repaired"
+expect_eq "$(field attempts)" 2 "reporting retry"
+
+case_ "implement: missing integration notes cannot be bundled after attempts run out"
+new_repo
+verify 'exit 0'
+agent <<'EOF'
+echo new >game/new.txt
+exit 0 # intentionally leave no summary
+EOF
+run --mode implement --branch agent/15-x --attempts 1
+expect_eq "$code" 2 "missing review refused"
+[[ ! -e "$out/changes.bundle" ]] || fail 'unreviewed work bundled'
+grep -q 'Integration review missing' "$out/verify-1.log" || fail 'missing review not in published failure log'
 
 case_ "implement: agent declines"
 new_repo

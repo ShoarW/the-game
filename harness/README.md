@@ -11,6 +11,7 @@ definition of done for agents and humans alike.
 | `prompts/` | `rules.md` (every run), one file per mode, `fix.md` (retries) |
 | `gate.sh` | Turns a GitHub event into run inputs, or refuses it |
 | `context.sh` | Writes the task, current PR, sibling PRs and paths, recent merges, and feedback from GitHub |
+| `check-summary.sh` | Requires integration review notes before agent-written work can be bundled |
 | `publish.sh` | Pushes the bundle, opens the PR or comments, reports failures |
 | `claude-app-token.sh` | Fallback push token from the Claude GitHub App |
 | `tests/` | Offline tests with a fake agent, `gh` and remote |
@@ -47,6 +48,21 @@ empty backlog. The prompts ask the agent to inspect existing systems and callers
 shared interfaces, check sibling PR overlap, and document integration and validation in
 the summary. An open PR is reference material, not an available dependency: agents must
 not merge sibling branches or recreate their systems to unblock a dependent request.
+
+Before coding, agents must inspect the relevant implementation, interfaces, callers and
+tests and record their decision in the summary. **Extend a suitable existing system;
+create a new one when nothing fits.** New gameplay can own its distinct behavior while
+using shared services where applicable. Separate feature directories are not a reason
+to duplicate shared state, persistence or networking authority, and reuse is not a reason
+to force unrelated systems together.
+
+After code verification passes, the runner requires three nonempty subsections under
+`## Integration`: `### Systems inspected`, `### Reuse decision`, and
+`### Compatibility checks`. Missing notes trigger the normal retry loop and prevent a
+success bundle when attempts run out. A declined request and an automatic clean base
+merge do not need an agent design review. This is a structural reporting check: it cannot
+prove that the agent searched thoroughly or that its design is correct. Reviewers still
+need to assess the concrete paths, rationale and compatibility tests in those notes.
 
 `revise` and `resolve-conflicts` both merge the checked-out base snapshot before doing
 their work. Clean and conflicting merges stay uncommitted until verification passes.

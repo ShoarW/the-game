@@ -70,6 +70,7 @@ scenario() {
   chmod +x "$work/adapters/fake.sh"
   printf '#!/usr/bin/env bash\nexit 0\n' >"$work/verify" && chmod +x "$work/verify"
   cat >"$work/agent-script"
+  echo 'source harness/tests/fixtures/complete-summary.sh' >>"$work/agent-script"
   echo task >"$work/task.md"
   HARNESS_ADAPTERS="$work/adapters" HARNESS_VERIFY="$work/verify" "$agent_repo/harness/run.sh" \
     --agent fake --mode implement --task "$work/task.md" --branch agent/5-jump-pads --out "$out" \

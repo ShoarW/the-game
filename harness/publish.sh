@@ -71,7 +71,7 @@ case "$status" in
     comment "$TARGET" "$tmp/body.md"
     exit 0
     ;;
-  failed) report_failure "\`harness/verify.sh\` still failed after $attempts attempt(s)" && exit 1 ;;
+  failed) report_failure "the work did not pass harness checks after $attempts attempt(s)" && exit 1 ;;
   agent_error) report_failure "the agent exited with an error" && exit 1 ;;
   *) report_failure "unknown status \`$status\`" && exit 1 ;;
 esac

@@ -129,6 +129,12 @@ check_work() {
   if ! "$verify" >"$out/verify-$n.log" 2>&1; then
     printf '`harness/verify.sh` failed. The end of its output:\n\n```\n%s\n```\n' \
       "$(tail -n 150 "$out/verify-$n.log")"
+    return
+  fi
+  # A clean base merge (attempt 0) has no agent design decision to report.
+  if [[ "$n" -gt 0 ]] && ! "$HARNESS_DIR/check-summary.sh" "$out/summary.md" >"$out/summary-$n.log"; then
+    cat "$out/summary-$n.log" | tee -a "$out/verify-$n.log"
+    printf 'Inspect the existing systems, record whether you extended one or needed a new system, and update summary.md using the required Integration subsections.\n'
   fi
 }
 
