@@ -8,6 +8,7 @@ class_name ChangelogEntries
 ## `title`: the feature's display name. `summary`: a one-line, player-facing
 ## description of what it does.
 const ENTRIES: Array[Dictionary] = [
+	{"title": "Coins", "summary": "Coins scattered around the map now add $10 to your real money."},
 	{"title": "AWP", "summary": "The AWP in the middle of the map is now a pickup."},
 	{
 		"title": "Pond",
