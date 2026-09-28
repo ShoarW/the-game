@@ -84,7 +84,10 @@ func animate(
 
 
 func shoulder_position(right: bool) -> Vector3:
-	return _right_shoulder.global_position if right else _left_shoulder.global_position
+	# HeldArms renders without physics interpolation; use the same interpolated
+	# shoulder that the renderer uses for this avatar, not its latest physics pose.
+	var shoulder := _right_shoulder if right else _left_shoulder
+	return shoulder.get_global_transform_interpolated().origin
 
 
 func sleeve_color() -> Color:

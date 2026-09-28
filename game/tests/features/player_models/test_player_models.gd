@@ -152,3 +152,16 @@ func test_skin_changes_update_exposed_body_without_changing_clothes_or_underwear
 	var underwear := _model.get_node("Rig/LeftLeg/Underwear") as MeshInstance3D
 	assert_true(underwear.visible)
 	assert_eq((underwear.material_override as StandardMaterial3D).albedo_color, Color("f8f8f1"))
+
+
+func test_shoulders_match_rendered_avatar_between_physics_ticks() -> void:
+	var marker := _model.get_node("Rig/Torso/RightShoulder") as Node3D
+	marker.get_global_transform_interpolated()
+	var largest_error := 0.0
+	for frame: int in 5:
+		await get_tree().physics_frame
+		_player.position.x += 0.1
+		await get_tree().process_frame
+		var rendered := marker.get_global_transform_interpolated().origin
+		largest_error = maxf(largest_error, _model.shoulder_position(true).distance_to(rendered))
+	assert_lt(largest_error, 0.001, "Held sleeves must attach to the interpolated shoulder")
