@@ -18,6 +18,8 @@ var _stow: Button
 var _drop: Button
 var _close_button: Button
 var _last_state := ""
+var _heading: Label
+var _character: VBoxContainer
 var _wallet: Label
 var _inventory: PlayerInventory
 
@@ -31,6 +33,8 @@ func _ready() -> void:
 	pad.button_index = JOY_BUTTON_BACK
 	Controls.ensure_action(&"inventory", [key, pad])
 	_build()
+	Controls.menu_requested.connect(_dismiss)
+	Network.mode_changed.connect(_on_mode_changed)
 
 
 func _process(_delta: float) -> void:
@@ -38,7 +42,10 @@ func _process(_delta: float) -> void:
 		return
 	_refresh_wallet()
 	var hand := Hand.for_peer(get_tree(), multiplayer.get_unique_id())
-	_inventory = hand.inventory() if hand != null else null
+	var next := hand.inventory() if hand != null else null
+	if next != _inventory:
+		_last_state = ""
+	_inventory = next
 	if _inventory == null:
 		_close(false)
 		return
@@ -82,7 +89,8 @@ func esc_menu_open() -> void:
 
 func _close(resume: bool = true) -> void:
 	_panel.hide()
-	remove_from_group(&"modal_ui")
+	if is_in_group(&"modal_ui"):
+		remove_from_group(&"modal_ui")
 	_preview.viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	get_viewport().set_input_as_handled()
 	if resume:
@@ -95,7 +103,7 @@ func _select(slot: int) -> void:
 
 
 func _refresh() -> void:
-	if _inventory == null:
+	if not is_instance_valid(_inventory):
 		return
 	var labels: Array[String] = ["HAND", "SHIRT", "PANTS"]
 	for index: int in 3:
@@ -169,14 +177,16 @@ func _build() -> void:
 	panel.add_child(box)
 	var header := HBoxContainer.new()
 	box.add_child(header)
-	var heading := _label(header, "INVENTORY", true)
-	heading.add_theme_font_size_override("font_size", 22)
-	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_heading = _label(header, "INVENTORY", true)
+	_heading.add_theme_font_size_override("font_size", 22)
 	var coin := InventoryIcon.new()
 	coin.custom_minimum_size = Vector2(26, 32)
 	coin.set_item("wallet")
 	header.add_child(coin)
 	_wallet = _label(header, "…")
+	_wallet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_wallet.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_wallet.clip_text = true
 	_wallet.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_wallet.add_theme_font_size_override("font_size", 18)
 	var hint := _label(box, "I / View to open  •  E / Use to collect")
@@ -189,8 +199,8 @@ func _build() -> void:
 	columns.add_theme_constant_override("h_separation", 22)
 	columns.add_theme_constant_override("v_separation", 14)
 	scroll.add_child(columns)
-	var character := VBoxContainer.new()
-	character.custom_minimum_size.x = 260
+	_character = VBoxContainer.new()
+	var character := _character
 	columns.add_child(character)
 	_preview = InventoryPreview.new()
 	character.add_child(_preview)
@@ -246,6 +256,9 @@ func _build() -> void:
 func _resize(
 	panel: PanelContainer, scroll: ScrollContainer, columns: HFlowContainer, bag: VBoxContainer
 ) -> void:
+	# A window can emit size_changed while its children are leaving the tree.
+	if not is_inside_tree():
+		return
 	var logical := get_viewport().get_visible_rect().size
 	var physical := Vector2(get_window().size)
 	var ui_scale := maxf(1.0, logical.x / maxf(physical.x, 1.0))
@@ -257,11 +270,13 @@ func _resize(
 	var available := _panel.size - Vector2(36, 36)
 	panel.custom_minimum_size.x = minf(available.x, 760)
 	scroll.custom_minimum_size = Vector2(0, minf(available.y - 180, 535))
-	columns.custom_minimum_size.x = maxf(260, panel.custom_minimum_size.x - 68)
+	columns.custom_minimum_size.x = maxf(210, panel.custom_minimum_size.x - 68)
+	_character.custom_minimum_size.x = minf(260, columns.custom_minimum_size.x)
+	_heading.add_theme_font_size_override("font_size", 18 if physical.x < 500 else 22)
 	_preview.custom_minimum_size.y = 260 if physical.x >= 700 else 170
 	bag.custom_minimum_size.x = minf(380, columns.custom_minimum_size.x)
 	var grid := _slots[0].get_parent() as GridContainer
-	grid.columns = 4 if bag.custom_minimum_size.x >= 370 else 3
+	grid.columns = clampi(int((bag.custom_minimum_size.x + 6.0) / 95.0), 2, 4)
 
 
 func _label(parent: Node, text: String, heading: bool = false) -> Label:
@@ -290,9 +305,44 @@ func _button(parent: Node, text: String, callback: Callable) -> Button:
 func _refresh_wallet() -> void:
 	var wallet := get_tree().get_first_node_in_group(&"player_money") as PlayerMoney
 	var peer := multiplayer.get_unique_id()
-	_wallet.text = (
-		PlayerMoney.format_money(int(wallet.balances[peer]))
-		if wallet != null and wallet.balances.has(peer)
-		else "…"
-	)
-	_wallet.tooltip_text = "Wallet: " + _wallet.text
+	var full := "…"
+	var display := full
+	if wallet != null and wallet.balances.has(peer):
+		var cents := int(wallet.balances[peer])
+		full = PlayerMoney.format_money(cents)
+		display = full
+		var width := _body_font.get_string_size(full, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+		if _wallet.size.x > 0 and width > _wallet.size.x:
+			# Keep the unit visible instead of clipping a number into a smaller amount.
+			if absi(cents) >= 100000:
+				display = compact_money(cents)
+	var display_width := _body_font.get_string_size(display, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+	var font_size := clampi(int(18.0 * _wallet.size.x / maxf(display_width, 1.0)), 12, 18)
+	_wallet.add_theme_font_size_override("font_size", font_size)
+
+	_wallet.text = display
+	_wallet.tooltip_text = "Wallet: " + full
+
+
+func _dismiss() -> void:
+	if _panel.visible:
+		_close(false)
+
+
+func _on_mode_changed(_mode: Network.Mode) -> void:
+	_dismiss()
+	_inventory = null
+	_last_state = ""
+
+
+static func compact_money(cents: int) -> String:
+	var amount := float(cents) / 100.0
+	var units: Array[String] = ["", "k", "M", "B", "T", "Q"]
+	var unit := 0
+	while absf(amount) >= 999.5 and unit < units.size() - 1:
+		amount /= 1000.0
+		unit += 1
+	var format := "$%.0f%s" if absf(amount) >= 100.0 else "$%.1f%s"
+	if absf(amount) < 10.0:
+		format = "$%.2f%s"
+	return format % [amount, units[unit]]

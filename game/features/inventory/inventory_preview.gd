@@ -15,6 +15,7 @@ func _ready() -> void:
 	viewport.transparent_bg = true
 	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(viewport)
+	viewport.size_changed.connect(_redraw)
 	var world := Node3D.new()
 	viewport.add_child(world)
 	world.add_child(model)
@@ -39,4 +40,12 @@ func _ready() -> void:
 
 func show_clothing(shirt: String, pants: String) -> void:
 	model.set_clothing(shirt, pants)
-	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_redraw()
+
+
+func _redraw() -> void:
+	# The pose is static. Refresh after clothing or size changes without rendering
+	# another 3D scene every frame while the player browses the backpack.
+	viewport.render_target_update_mode = (
+		SubViewport.UPDATE_ONCE if is_visible_in_tree() else SubViewport.UPDATE_DISABLED
+	)

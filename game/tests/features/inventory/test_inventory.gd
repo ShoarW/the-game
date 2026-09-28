@@ -1,5 +1,6 @@
 extends GutTest
 
+const SCREEN := preload("res://features/inventory/inventory_screen.gd")
 const HAND := preload("res://features/holdables/hand.tscn")
 const PLAYER := preload("res://core/player/player.tscn")
 const PICKUP := preload("res://features/holdables/item_pickup.tscn")
@@ -171,7 +172,7 @@ func test_inventory_screen_reads_wallet_without_using_a_slot_and_blocks_gameplay
 	add_child_autofree(wallet)
 	wallet.set_process(false)
 	wallet.balances = {1: 4250}
-	var screen: CanvasLayer = load("res://features/inventory/inventory_screen.gd").new()
+	var screen: CanvasLayer = SCREEN.new()
 	add_child_autofree(screen)
 	_hand.skin_index = 6
 	screen.esc_menu_open()
@@ -197,3 +198,66 @@ func test_inventory_screen_reads_wallet_without_using_a_slot_and_blocks_gameplay
 	screen._close(false)
 	assert_false(screen.is_in_group(&"modal_ui"))
 	assert_false(screen._panel.visible)
+
+
+func test_inventory_refreshes_preview_when_owner_instance_changes_with_same_items() -> void:
+	_hand.skin_index = 2
+	var screen: CanvasLayer = SCREEN.new()
+	add_child_autofree(screen)
+	screen.set_process(false)
+	screen.esc_menu_open()
+	screen._process(0.0)
+	_hand.remove_from_group(&"hands")
+	var replacement := HAND.instantiate() as Hand
+	replacement.peer_id = 1
+	replacement.skin_index = 7
+	add_child_autofree(replacement)
+	screen._process(0.0)
+	assert_eq(screen._preview.model.skin_color, PlayerSkin.TONES[7])
+	screen._close(false)
+
+
+func test_inventory_closes_without_resuming_when_menu_or_network_context_changes() -> void:
+	var screen: CanvasLayer = SCREEN.new()
+	add_child_autofree(screen)
+	screen.esc_menu_open()
+	Controls.menu_requested.emit()
+	assert_false(screen._panel.visible, "The main menu must not stack over an active inventory")
+	assert_false(screen.is_in_group(&"modal_ui"))
+	assert_false(Controls.playing)
+	screen.esc_menu_open()
+	Network.mode_changed.emit(Network.mode)
+	assert_false(screen._panel.visible, "Old inventory cannot stay open across a connection change")
+	assert_false(Controls.playing)
+	screen._close(false)
+
+
+func test_narrow_inventory_keeps_wallet_and_close_button_inside_viewport() -> void:
+	var window := Window.new()
+	window.size = Vector2i(320, 700)
+	add_child_autofree(window)
+	var wallet := PlayerMoney.new()
+	add_child_autofree(wallet)
+	wallet.set_process(false)
+	wallet.balances = {1: 123456789}
+	var screen: CanvasLayer = SCREEN.new()
+	window.add_child(screen)
+	screen.esc_menu_open()
+	for frame: int in 4:
+		await get_tree().process_frame
+	for control: Control in [screen._wallet, screen._close_button]:
+		var rect: Rect2 = (
+			control.get_global_transform_with_canvas() * Rect2(Vector2.ZERO, control.size)
+		)
+		assert_gte(rect.position.x, 0.0)
+		assert_lte(rect.end.x, window.get_visible_rect().size.x)
+	assert_eq(screen._wallet.text, "$1.23M", "Compact balances must keep a magnitude suffix")
+	assert_eq(screen._wallet.tooltip_text, "Wallet: $1234567.89", "The full amount stays available")
+	screen._close(false)
+
+
+func test_compact_wallet_keeps_units_at_rounding_boundaries() -> void:
+	assert_eq(SCREEN.compact_money(100000), "$1.00k")
+	assert_eq(SCREEN.compact_money(99999999), "$1.00M")
+	assert_eq(SCREEN.compact_money(123456789), "$1.23M")
+	assert_eq(SCREEN.compact_money(99999999999), "$1.00B")

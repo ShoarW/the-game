@@ -26,8 +26,8 @@ action all key off the category.
 ## How it works
 
 - `item_pickup.gd`: a world pickup. It's an `interactables` entry (see
-  `features/interaction`), so E/controller-B hands it to whichever nearby hand is
-  empty. Once taken it's gone for good (`net_taken`, replicated).
+  `features/interaction`), so E/controller-B equips it in an empty matching slot or adds it to
+  the backpack. Once taken it's gone for good (`net_taken`, replicated).
 - `hand.gd`: one player's held item. The holdables feature spawns one `Hand` per
   connected peer (like `core/game/game.gd` spawns one `Player` per peer), since
   `core/player` isn't ours to edit — a `Hand` isn't parented to its `Player`; each
@@ -35,8 +35,8 @@ action all key off the category.
   the body in third person and on remote peers. It updates after the player and
   F3 camera, follows yaw and pitch, and avoids a second physics interpolation.
   `held_arms.gd` connects cosmetic sleeves to the shoulders and places gloves at
-  each model's grip markers. A banana uses one hand; guns and the ball use two. Holding (`net_item_id`) is server-authoritative, like the rest of shared
-  state — the one exception in this codebase is player movement.
+  each model's grip markers. A banana uses one hand; guns and the ball use two.
+  Holding (`net_item_id`) is server-authoritative, like the rest of shared state — the one exception in this codebase is player movement.
 - The primary action (left click / right shoulder button) asks the server to resolve
   it based on the held item's category:
   - `WEAPON`: hitscans from the replicated player eye position (independent of
@@ -51,8 +51,8 @@ action all key off the category.
   - `FOOD`: eaten once and gone.
   - `PROP`: thrown.
   - Any held item can also be dropped with G / left shoulder button
-    (`request_drop_item`), regardless of category — the only way to get rid of a
-    weapon, since firing never empties the hand.
+    (`request_drop_item`), regardless of category. The inventory can also store
+    the held item or swap it with another item in the backpack.
 - `thrown_item.gd`: arcs an item from hand to a landing point (a raycast finds the
   floor under the throw — see `_toss` in `hand.gd`, used by both a PROP's throw and a
   plain drop), then bounces it a few times, lower and fewer bounces the heavier the
