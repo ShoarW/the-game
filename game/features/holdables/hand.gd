@@ -9,8 +9,6 @@ extends Node3D
 ## unlike Player's client-authoritative movement this keeps the default multiplayer
 ## authority (1, the server). Clients only ever request an action; the server decides.
 
-const LOCAL_OFFSET := Transform3D(Basis(), Vector3(0.28, -0.22, -0.55))
-const REMOTE_OFFSET := Transform3D(Basis(), Vector3(0.32, 1.1, 0.25))
 const THROW_DISTANCE := 5.0
 const DROP_DISTANCE := 1.2
 const HITSCAN_RANGE_M := 50.0
@@ -25,6 +23,7 @@ var peer_id := 0
 
 var _mounted_item_id := ""
 var _view: Node3D
+var _arms := HeldArms.new()
 var _flash_timer := 0.0
 var _fire_cooldown := 0.0
 
@@ -32,6 +31,11 @@ var _fire_cooldown := 0.0
 
 
 func _ready() -> void:
+	# Player updates at priority 0; third-person camera updates at 10.
+	process_priority = 20
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+	_arms.name = "Arms"
+	add_child(_arms)
 	add_to_group(&"hands")
 	var mouse := InputEventMouseButton.new()
 	mouse.button_index = MOUSE_BUTTON_LEFT
@@ -53,6 +57,7 @@ func _process(delta: float) -> void:
 	visible = player != null and not net_item_id.is_empty()
 	if player != null:
 		global_transform = _mount_transform(player)
+		_pose_arms(player)
 	if _flash_timer > 0.0:
 		_flash_timer -= delta
 		if _flash_timer <= 0.0:
@@ -137,7 +142,7 @@ func _fire(def: ItemDefinition) -> void:
 	if player == null:
 		return
 	var combat := get_tree().get_first_node_in_group(&"combat")
-	var origin := _mount_transform(player).origin
+	var origin := _aim_origin(player)
 	for _pellet: int in maxi(def.pellet_count, 1):
 		var jitter := deg_to_rad(def.spread_degrees)
 		var yaw := player.net_yaw + randf_range(-jitter, jitter)
@@ -197,7 +202,9 @@ func _toss(def: ItemDefinition, distance: float) -> void:
 		net_item_id = ""
 		return
 	net_item_id = ""
-	var from := _mount_transform(player).origin
+	var from := (
+		HeldItemPose.world_grip(player.net_position, player.net_yaw, player.net_pitch).origin
+	)
 	var direction := ThrowMath.aim_direction(player.net_yaw, player.net_pitch)
 	var to := _landing_point(from, direction, distance)
 	var holdables := get_tree().get_first_node_in_group(&"holdables_root")
@@ -214,14 +221,49 @@ func _landing_point(from: Vector3, direction: Vector3, distance: float) -> Vecto
 	return hit["position"] if hit else flat
 
 
-## Where this hand's item sits: near the camera for the local player (a first-person
-## viewmodel), or near the body's hand for everyone else watching a puppet.
+## Use the first-person camera only while the owner's body is hidden. F3 and
+## remote peers use the same body-relative grip, including the aim pitch.
 func _mount_transform(player: Player) -> Transform3D:
-	if player.is_local():
-		var camera := player.get_node("Camera") as Node3D
-		return camera.global_transform * LOCAL_OFFSET
 	var body := player.get_node("Body") as Node3D
-	return body.global_transform * REMOTE_OFFSET
+	if player.is_local() and not body.visible:
+		var camera := player.get_node("Camera") as Node3D
+		var def := ItemCatalog.find(net_item_id)
+		var offset := def.first_person_offset if def != null else HeldItemPose.FIRST_PERSON_OFFSET
+		return camera.global_transform * Transform3D(Basis.IDENTITY, offset)
+	var yaw := player.yaw if player.is_local() else body.global_rotation.y
+	var pitch := player.pitch if player.is_local() else player.net_pitch
+	var origin := (
+		player.get_global_transform_interpolated().origin
+		if player.is_local()
+		else player.global_position
+	)
+	return HeldItemPose.world_grip(origin, yaw, pitch)
+
+
+func _aim_origin(player: Player) -> Vector3:
+	return (
+		player.net_position
+		+ Vector3.UP * (player.movement.eye_height_m() - player.movement.hull_height_m() * 0.5)
+	)
+
+
+func _pose_arms(player: Player) -> void:
+	if _view == null:
+		return
+	var body := player.get_node("Body") as Node3D
+	var shoulders: Transform3D
+	if player.is_local() and not body.visible:
+		shoulders = (player.get_node("Camera") as Node3D).global_transform
+		shoulders.origin += shoulders.basis * Vector3(0, -0.36, 0.10)
+	else:
+		var yaw := player.yaw if player.is_local() else body.global_rotation.y
+		shoulders = Transform3D(Basis(Vector3.UP, yaw), body.global_position)
+		shoulders.origin.y += 0.30
+	_arms.pose(
+		_arms.to_local(shoulders * Vector3(0.32, 0, 0)),
+		_arms.to_local(shoulders * Vector3(-0.32, 0, 0)),
+		_view.get_node_or_null("SupportGrip") as Node3D
+	)
 
 
 func _player() -> Player:
@@ -242,6 +284,7 @@ func _rebuild_view() -> void:
 	if def != null and def.view_scene != null:
 		_view = def.view_scene.instantiate() as Node3D
 		_mount.add_child(_view)
+		HeldItemPose.align_grip(_view)
 
 
 func _set_flash(active: bool) -> void:

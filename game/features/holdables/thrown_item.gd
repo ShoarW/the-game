@@ -46,6 +46,7 @@ func _ready() -> void:
 	var def := ItemCatalog.find(item_id)
 	if def != null and def.view_scene != null:
 		_mount.add_child(def.view_scene.instantiate())
+		_mount.position.y = def.ground_clearance
 	if not multiplayer.is_server():
 		set_physics_process(false)
 	_apply_landed(net_landed)

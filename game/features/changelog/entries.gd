@@ -9,6 +9,11 @@ class_name ChangelogEntries
 ## description of what it does.
 const ENTRIES: Array[Dictionary] = [
 	{
+		"title": "Better items and grips",
+		"summary":
+		"Remodeled guns, banana and ball, with visible hands and proper first- and third-person grips."
+	},
+	{
 		"title": "Frogs on the move",
 		"summary":
 		"Frogs have detailed bodies, varied sizes and hops, avoid obstacles, and flee nearby players."
