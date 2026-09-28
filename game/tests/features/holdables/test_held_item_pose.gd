@@ -19,6 +19,11 @@ func before_each() -> void:
 	_hand.set_process(false)
 
 
+func after_each() -> void:
+	# View replacements queue old meshes for deletion; flush before orphan checks.
+	await get_tree().process_frame
+
+
 func test_all_models_attach_the_primary_grip_to_the_right_hand() -> void:
 	for def: ItemDefinition in ItemCatalog.DEFINITIONS:
 		_equip(def.id)
