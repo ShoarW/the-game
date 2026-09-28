@@ -8,6 +8,20 @@ class_name ChangelogEntries
 ## `title`: the feature's display name. `summary`: a one-line, player-facing
 ## description of what it does.
 const ENTRIES: Array[Dictionary] = [
+	{
+		"title": "Right-handed controls by default",
+		"summary": "New controls default to WASD + Space (DoctorDalek still starts left-handed).",
+	},
+	{
+		"title": "Combat",
+		"summary": "Weapons can now kill — take damage and respawn once your health runs out."
+	},
+	{
+		"title": "Item drops & new guns",
+		"summary":
+		"Drop any held item with G; thrown items bounce based on weight. Added an SMG and a shotgun."
+	},
+	{"title": "Esc menu", "summary": "Controls and Release notes moved into the Esc menu."},
 	{"title": "Coins", "summary": "Coins scattered around the map now add $10 to your real money."},
 	{"title": "AWP", "summary": "The AWP in the middle of the map is now a pickup."},
 	{
