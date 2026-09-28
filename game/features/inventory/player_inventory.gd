@@ -39,6 +39,7 @@ func collect(id: String) -> bool:
 	if not item_at(target).is_empty():
 		target = backpack.find("")
 	_set_item(target, id)
+	hand()._play_inventory.rpc_id(hand().peer_id, &"pickup")
 	return true
 
 
@@ -53,6 +54,7 @@ func request_equip(index: int) -> void:
 	var previous := item_at(target)
 	_set_item(target, id)
 	_set_item(index, previous)
+	hand()._play_inventory.rpc_id(hand().peer_id, &"equip")
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -64,6 +66,7 @@ func request_stow(slot: int) -> void:
 		return
 	_set_item(empty, item_at(slot))
 	_set_item(slot, "")
+	hand()._play_inventory.rpc_id(hand().peer_id, &"equip")
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -74,6 +77,7 @@ func request_drop(slot: int) -> void:
 	if id.is_empty() or not hand().drop_inventory_item(id):
 		return
 	_set_item(slot, "")
+	hand()._play_inventory.rpc_id(hand().peer_id, &"drop")
 
 
 func _authorized() -> bool:

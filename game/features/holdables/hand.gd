@@ -98,8 +98,7 @@ func request_primary_action() -> void:
 
 
 ## Drops whatever is held, regardless of category, a short toss in front of the
-## player — the only way to get rid of a weapon once picked up, since firing and
-## eating never empty the hand.
+## player. Inventory storage and swapping provide the other ways to free a hand.
 @rpc("any_peer", "call_local", "reliable")
 func request_drop_item() -> void:
 	if not multiplayer.is_server() or not _is_own_request() or net_item_id.is_empty():
@@ -138,24 +137,31 @@ func _is_own_request() -> bool:
 func _fire(def: ItemDefinition) -> void:
 	if _fire_cooldown > 0.0:
 		return
-	_fire_cooldown = def.fire_cooldown_s
-	_play_fire.rpc()
-	if def.damage <= 0.0:
-		return
 	var player := _player()
 	if player == null:
 		return
-	var combat := get_tree().get_first_node_in_group(&"combat")
+	_fire_cooldown = def.fire_cooldown_s
 	var origin := _aim_origin(player)
+	_play_fire.rpc(def.id, origin)
+	if def.damage <= 0.0:
+		return
+	var combat := get_tree().get_first_node_in_group(&"combat")
+	var played_impact := false
 	for _pellet: int in maxi(def.pellet_count, 1):
 		var jitter := deg_to_rad(def.spread_degrees)
 		var yaw := player.net_yaw + randf_range(-jitter, jitter)
 		var pitch := clampf(
 			player.net_pitch + randf_range(-jitter, jitter), deg_to_rad(-89.0), deg_to_rad(89.0)
 		)
-		var target := _hitscan(player, origin, ThrowMath.aim_direction(yaw, pitch))
+		var hit := _hitscan(player, origin, ThrowMath.aim_direction(yaw, pitch))
+		if hit.is_empty():
+			continue
+		var target := hit["collider"] as Node3D
 		if target == null:
 			continue
+		if not played_impact:
+			_play_impact.rpc(hit["position"], target is Player or target.is_in_group(&"killable"))
+			played_impact = true
 		var target_player := target as Player
 		if target_player != null and combat != null:
 			combat.call(
@@ -165,22 +171,33 @@ func _fire(def: ItemDefinition) -> void:
 			target.call("take_hit", peer_id)
 
 
-## Returns whatever physics body the shot hit — a `Player` for combat damage, or
-## anything else (e.g. features/penguin's `killable` group) for features that handle
-## being shot on their own terms.
-func _hitscan(shooter: Player, origin: Vector3, direction: Vector3) -> Node3D:
+## Keep the hit position for spatial impact audio, alongside the damage target.
+func _hitscan(shooter: Player, origin: Vector3, direction: Vector3) -> Dictionary:
 	# Layer 2 lets shots hit small wildlife without blocking player movement.
 	var query := PhysicsRayQueryParameters3D.create(
 		origin, origin + direction * HITSCAN_RANGE_M, 1 | 2, [shooter.get_rid()]
 	)
-	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-	return hit["collider"] as Node3D if hit else null
+	return get_world_3d().direct_space_state.intersect_ray(query)
 
 
 @rpc("authority", "call_local", "reliable")
-func _play_fire() -> void:
+func _play_fire(item_id: String, origin: Vector3) -> void:
 	_flash_timer = FLASH_DURATION_S
 	_set_flash(true)
+	# Use the event's weapon ID; replicated equipment may already have changed.
+	GameAudio.play_at(self, StringName(item_id), origin)
+
+
+@rpc("authority", "call_local", "reliable")
+func _play_impact(at: Vector3, living: bool) -> void:
+	GameAudio.play_at(self, &"hit" if living else &"impact", at)
+
+
+## Only the collecting/equipping owner hears inventory confirmations.
+@rpc("authority", "call_local", "reliable")
+func _play_inventory(cue: StringName) -> void:
+	if peer_id == multiplayer.get_unique_id():
+		GameAudio.play_ui(self, cue)
 
 
 func _eat(def: ItemDefinition) -> void:
@@ -215,6 +232,7 @@ func _toss(def: ItemDefinition, distance: float) -> void:
 	var holdables := get_tree().get_first_node_in_group(&"holdables_root")
 	if holdables:
 		holdables.call("spawn_thrown_item", def.id, from, to)
+		_play_inventory.rpc_id(peer_id, &"drop")
 
 
 func _landing_point(from: Vector3, direction: Vector3, distance: float) -> Vector3:

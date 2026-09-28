@@ -79,6 +79,7 @@ func esc_menu_open() -> void:
 		return
 	_inventory = hand.inventory()
 	_panel.show()
+	GameAudio.play_ui(self, &"open")
 	add_to_group(&"modal_ui")
 	Controls.pause()
 	_last_state = ""
@@ -88,6 +89,8 @@ func esc_menu_open() -> void:
 
 
 func _close(resume: bool = true) -> void:
+	if _panel.visible and resume:
+		GameAudio.play_ui(self, &"close")
 	_panel.hide()
 	if is_in_group(&"modal_ui"):
 		remove_from_group(&"modal_ui")

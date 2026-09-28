@@ -14,6 +14,7 @@ static func spawn(source: Node3D, body: Node3D) -> MeshExplosion:
 	effect.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	source.add_child(effect)
 	effect.global_position = source.get_global_transform_interpolated().origin
+	GameAudio.play_at(source, &"explosion", effect.global_position)
 	effect._spawn_flash()
 	effect._spawn_shockwave()
 	effect._spawn_debris(body)

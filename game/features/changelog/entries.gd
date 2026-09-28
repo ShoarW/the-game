@@ -9,6 +9,11 @@ class_name ChangelogEntries
 ## description of what it does.
 const ENTRIES: Array[Dictionary] = [
 	{
+		"title": "Gameplay sound effects",
+		"summary":
+		"Guns, hits and animal explosions now make sound. Pickups and inventory actions have audio cues."
+	},
+	{
 		"title": "Exploding frogs",
 		"summary":
 		"Shoot frogs for a burst of flying pieces; they return after four seconds. Penguins face forward."
