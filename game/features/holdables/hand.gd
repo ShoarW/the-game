@@ -169,8 +169,9 @@ func _fire(def: ItemDefinition) -> void:
 ## anything else (e.g. features/penguin's `killable` group) for features that handle
 ## being shot on their own terms.
 func _hitscan(shooter: Player, origin: Vector3, direction: Vector3) -> Node3D:
+	# Layer 2 lets shots hit small wildlife without blocking player movement.
 	var query := PhysicsRayQueryParameters3D.create(
-		origin, origin + direction * HITSCAN_RANGE_M, 1, [shooter.get_rid()]
+		origin, origin + direction * HITSCAN_RANGE_M, 1 | 2, [shooter.get_rid()]
 	)
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	return hit["collider"] as Node3D if hit else null

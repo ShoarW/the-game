@@ -4,7 +4,7 @@ Six server-spawned frogs explore the level. Each spawn carries a fixed skin colo
 size, hop distance, height, duration, and idle interval to every peer, including
 late joiners. The model uses low-poly meshes, separate skin materials, spotted
 backs, webbed feet, and animated hind legs. The server synchronizes position,
-facing, and hop phase; clients only smooth and animate these values.
+facing, hop phase, and alive state; clients only smooth and animate these values.
 
 ## Movement
 
@@ -24,6 +24,18 @@ This is local obstacle avoidance, not destination pathfinding through a maze.
 Frogs wander without a spawn-radius leash; when completely trapped they wait and
 retry. The existing penguin follows a fixed circle and there is no shared level
 navigation system, so this helper belongs to the existing frogs feature.
+
+## Hits and respawns
+
+Any weapon can hit a frog. The server handles a single fatal hit, broadcasts the
+same flash, shockwave, and flying model pieces as the penguin, and respawns the
+frog at its original location after four seconds. Its color, size and hop profile
+stay unchanged. Dead frogs stop moving and have no active collision shape.
+Late joiners receive the alive state without replaying an old explosion.
+
+Frogs use physics layer 2, included in weapon hitscans but excluded from player
+movement. Shared cosmetic effects live in `features/animal_effects/`; debris
+retains each frog's materials and clears itself after the animation.
 
 ## Verification
 

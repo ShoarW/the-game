@@ -9,6 +9,11 @@ class_name ChangelogEntries
 ## description of what it does.
 const ENTRIES: Array[Dictionary] = [
 	{
+		"title": "Exploding frogs",
+		"summary":
+		"Shoot frogs for a burst of flying pieces; they return after four seconds. Penguins face forward."
+	},
+	{
 		"title": "Player skin tones",
 		"summary": "Your player ID now determines a consistent skin tone for your avatar and hands."
 	},

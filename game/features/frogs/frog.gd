@@ -6,10 +6,12 @@ extends CharacterBody3D
 const REMOTE_SMOOTHING := 18.0
 const ALERT_RADIUS := 5.0
 const CALM_RADIUS := 7.0
+const RESPAWN_DELAY_S := 4.0
 
 @export var net_position := Vector3.ZERO
 @export var net_yaw := 0.0
 @export var net_phase := -1.0
+@export var net_alive := true
 
 var body_color := Color(0.3, 0.8, 0.35)
 var body_size := 1.0
@@ -18,6 +20,9 @@ var jump_height := 0.5
 var jump_duration := 0.45
 var rest_time := 1.0
 
+var _home := Vector3.ZERO
+var _respawn_timer := 0.0
+var _was_alive := true
 var _remote_initialized := false
 var _hopping := false
 var _settling := true
@@ -38,6 +43,8 @@ var _navigation := FrogNavigation.new()
 
 
 func _ready() -> void:
+	_home = position
+	add_to_group(&"killable")
 	_navigation.configure(body_size, get_rid())
 	_collider.shape = _navigation.body_shape
 	_collider.position.y = _navigation.radius + 0.04
@@ -52,6 +59,11 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if not net_alive:
+		_respawn_timer -= delta
+		if _respawn_timer <= 0.0:
+			_respawn()
+		return
 	_sense_timer -= delta
 	if _sense_timer <= 0.0:
 		_sense_timer = 0.12
@@ -85,9 +97,16 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(delta: float) -> void:
+	if net_alive != _was_alive:
+		_remote_initialized = false
+		_was_alive = net_alive
+	_body.visible = net_alive
+	_collider.disabled = not net_alive
 	var smoothing := 1.0 - exp(-REMOTE_SMOOTHING * delta)
 	if not multiplayer.is_server():
 		_render_remote(smoothing)
+	if not net_alive:
+		return
 	_body.rotation.y = lerp_angle(_body.rotation.y, net_yaw, smoothing)
 	_body.animate(net_phase, delta)
 
@@ -154,3 +173,37 @@ func _render_remote(smoothing: float) -> void:
 		reset_physics_interpolation()
 	else:
 		position = position.lerp(net_position, smoothing)
+
+
+## Called by the server's weapon hitscan. Repeated shotgun pellets cannot restart
+## the timer or duplicate the effect, and clients cannot choose an animal's state.
+func take_hit(_attacker_peer: int) -> void:
+	if not multiplayer.is_server() or not net_alive:
+		return
+	net_alive = false
+	_hopping = false
+	net_phase = -1.0
+	velocity = Vector3.ZERO
+	_respawn_timer = RESPAWN_DELAY_S
+	_explode.rpc()
+
+
+func _respawn() -> void:
+	position = _home
+	net_position = position
+	net_yaw = 0.0
+	net_phase = -1.0
+	_hopping = false
+	_settling = true
+	velocity = Vector3.ZERO
+	_fleeing = false
+	_threat = Vector3.INF
+	_sense_timer = 0.0
+	_rest_timer = rest_time
+	net_alive = true
+	reset_physics_interpolation()
+
+
+@rpc("authority", "call_local", "reliable")
+func _explode() -> void:
+	MeshExplosion.spawn(self, _body)
