@@ -17,6 +17,10 @@ const ENTRIES: Array[Dictionary] = [
 		)
 	},
 	{
+		"title": "Kaaba",
+		"summary": "A scaled-down Kaaba now stands in the northwest corner of the map."
+	},
+	{
 		"title": "Trampolines",
 		"summary": "Trampoline squares on the map launch you into the air when you stand on them."
 	},
